@@ -16,18 +16,15 @@ char buf[2][100];
 
 int main()
 {
-    //fds[0].fd = open("/dev/urandom", O_RDONLY);
-    //if (fds[0].fd < 0)
-    //    perror("open urandom");
-    fds[0].fd = 0;
+    fds[0].fd = open("/dev/urandom", O_RDONLY);
+    if (fds[0].fd < 0)
+       perror("open urandom");
     fds[1].fd = 0;
     fds[2].fd = 1;
 
     fds[0].events  = POLLIN;
     fds[1].events = POLLIN;
     fds[2].events = POLLOUT;
-    int k;
-    //for (k = 0; k < 10; k++)
     while(1)
     {
         ret = poll(fds, 3, timeout_msecs);
@@ -44,8 +41,6 @@ int main()
             {
                 if (fds[i].revents & POLLIN) 
                 {
-                    return 0;
-                    printf("%d %d\n", i, buf_size[i]);
                     if (buf_size[i] < 100)
                     {    
                         int tmp  = read(fds[i].fd, buf[i] + buf_size[i], 100 - buf_size[i]);
