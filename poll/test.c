@@ -25,7 +25,8 @@ int main()
     fds[0].events  = POLLIN;
     fds[1].events = POLLIN;
     fds[2].events = POLLOUT;
-    while (1)
+    int k;
+    for (k = 0; k < 10; k++)
     {
         ret = poll(fds, 3, timeout_msecs);
         if (ret < 0)
@@ -43,12 +44,18 @@ int main()
                 {
                     if (buf_size[i] < 100)
                     {    
-                        printf("%s %d\n", "size to read ", 100-buf_size[i]);
                         int tmp  = read(fds[i].fd, buf[i] + buf_size[i], 100 - buf_size[i]);
-                        printf("%s %d\n", "read", tmp);
-                        if (tmp < 0)
-                            perror("read");
-                        buf_size[i] += tmp;
+                        if (tmp == 0)
+                        {
+                            printf("%s %d", "Switch off ", i);
+                            fds[i].events &=~ POLLIN; 
+                        } else 
+                            if (tmp < 0)
+                                perror("read");
+                            else 
+                            {
+                                buf_size[i] += tmp;
+                            }
                     }
                 }
                 if (fds[i].revents & POLLOUT)
@@ -57,7 +64,6 @@ int main()
                     for (j = 0; j < 2; j++) 
                     {
                         int tmp = write(fds[i].fd, buf[j], buf_size[j]);
-                        printf("%s %d\n", "write", tmp);
                         if (tmp < 0)
                             perror("write");
                         memmove(buf[j] + tmp, buf[j], buf_size[j] - tmp);
