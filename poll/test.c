@@ -54,6 +54,7 @@ int main()
                             else 
                             {
                                 buf_size[i] += tmp;
+                                fds[2].events |= POLLOUT;
                             }
                     }
                 }
@@ -66,7 +67,10 @@ int main()
                         if (tmp < 0)
                             perror("write");
                         memmove(buf[j] + tmp, buf[j], buf_size[j] - tmp);
+                        buf_size[j] -= tmp;
                     }
+                    if ((buf_size[0] == 0) && (buf_size[1] ==0))
+                            fds[2].events &=~ POLLOUT;
 
                 }
             }    
