@@ -19,11 +19,13 @@ int main(int argc, char** argv)
     int n = (argc - 1) / 2;
     int i;
     buf_size = malloc(n);
+    buf = malloc(n);
     for (i = 0; i < n; i++)
     {
         buf[i] = malloc(BUFSIZE);
         buf_size[i] = 0;
     }
+    fds = malloc(n);
     for (i = 0; i < 2 * n; i++)
     {
         fds[i].fd = atoi(argv[i + 1]);

@@ -1,2 +1,2 @@
 all:
-	gcc -Wall test.c -o test
+	gcc -Wall cp-poll.c -o cp-poll
