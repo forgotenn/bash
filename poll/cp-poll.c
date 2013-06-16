@@ -18,7 +18,7 @@ int main(int argc, char** argv)
 {
     int n = (argc - 1) / 2;
     int i;
-    buf_size = malloc(n);
+    buf_size = malloc(n * sizeof(int));
     buf = malloc(n);
     for (i = 0; i < n; i++)
     {
@@ -29,10 +29,7 @@ int main(int argc, char** argv)
     for (i = 0; i < 2 * n; i++)
     {
         fds[i].fd = atoi(argv[i + 1]);
-        if (i % 2 == 0)
-            fds[i].events = POLLIN;
-        else
-            fds[i].events = POLLOUT;
+        fds[i].events = (i % 2 == 0) ? POLLIN : POLLOUT;
     }
     while(1)
     {

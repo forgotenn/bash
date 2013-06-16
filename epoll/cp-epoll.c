@@ -7,71 +7,91 @@
 #include <unistd.h>
 #include <string.h>
 
-const int MAX_NUMBER_FD = 2;
-const int MAX_EVENTS = 64;
 const int MAX_BUFSIZE = 100;
+
 typedef struct epoll_event epoll_event;
-int main()
+
+char** buf;
+int* buf_size;
+int epfd;
+epoll_event* events;
+
+int main(int argc, char** argv)
 {
-    int epfd = epoll_create(MAX_NUMBER_FD);
+    int n = (argc - 1) / 2;
+    buf_size = malloc(n * sizeof(int));
+    if (!buf_size)
+        perror("malloc buf_size");
+    buf = malloc(n);
+    if (!buf)
+        perror("malloc buf");
+    epfd = epoll_create(n);
     if (epfd < 0)
-        perror("epoll create");
-    epoll_event in, out;
-    in.data.fd = 0;
-    out.data.fd = 1;
-    in.events = EPOLLIN;
-    out.events = EPOLLOUT;
-
-    int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, in.data.fd, &in);
-    if (ret)
-        perror("epoll_ctl_in");
-    ret = epoll_ctl(epfd, EPOLL_CTL_ADD, out.data.fd, &out);
-    if (ret)
-        perror("epoll_ctl_out");
-    epoll_event *events = malloc(sizeof(epoll_event) * MAX_EVENTS);
-    if (!events)
-    {
-        perror("malloc");
-        return -1;
-    }
-    int nr_events = epoll_wait(epfd, events, MAX_EVENTS, -1);
-    if (nr_events < 0)
-    {
-        perror("epoll_wait");
-        free(events);
-        return 1;
-    }
-    char* buf;
-    int bufsize = 0;
-    buf = malloc(MAX_BUFSIZE);
+        perror("epoll_create");
+    epoll_event cur;
+    int ret;
     int i;
-    for (i = 0; i < nr_events; i++)
+    for (i = 0; i < 2 * n; i++)
     {
-        if (events[i].events & EPOLLIN)
-        {
-           if (bufsize < MAX_BUFSIZE)
-           {
-               int tmp = read(events[i].data.fd, buf + bufsize, MAX_BUFSIZE - bufsize);
-               if (tmp < 0)
-                   perror("read");
-               else 
-                   bufsize += tmp;
-            }
-        } else
-        if (events[i].events & EPOLLOUT)
-        {
-            int tmp = write(events[i].data.fd, buf, bufsize);
-            if (tmp < 0)
-                perror("write");
-            else
-            {
-                memmove(buf + tmp, buf, bufsize - tmp);
-                bufsize -= tmp;
-            }
-        }   
-        printf("event=%d on fd=%d\n", events[i].events, events[i].data.fd);
+        buf[i] = malloc(MAX_BUFSIZE);
+        if (!buf[i])
+            perror("malloc buf");
+        buf_size[i] = 0;
+        cur.data.fd = atoi(argv[i + 1]);
+        printf("fd = %d\n", cur.data.fd);
+        cur.events = i % 2 == 0 ? EPOLLIN : EPOLLOUT;
+        ret = epoll_ctl(epfd, EPOLL_CTL_ADD, cur.data.fd, &cur);
+        if (ret)
+            perror("epoll_ctl");
     }
 
+    events = malloc(sizeof(epoll_event) * n);
+    if (!events)
+        perror("malloc");
+
+    while(1)
+    {
+        int nr_events = epoll_wait(epfd, events, n, -1);
+        printf("nr_events %d\n", nr_events);
+        if (nr_events < 0)
+        {
+            perror("epoll_wait");
+            free(events);
+            return 1;
+        }
+
+        for (i = 0; i < nr_events; i++)
+        {
+            if (events[i].events & EPOLLIN)
+            {
+                if (buf_size[i] < MAX_BUFSIZE)
+                {
+                    int tmp = read(events[i].data.fd, buf[i] + buf_size[i], MAX_BUFSIZE - buf_size[i]);
+                    if (tmp == 0)
+                    { 
+                        printf("Switch off %d\n", events[i].data.fd);
+                        events[i].events &=~ EPOLLIN;
+                    }
+                    if (tmp < 0)
+                        perror("read");
+                    else 
+                        buf_size[i] += tmp;
+                }
+            } else
+                if (events[i].events & EPOLLOUT)
+                {
+                    int tmp = write(events[i].data.fd, buf[i - 1], buf_size[i - 1]);
+                    if (tmp < 0)
+                        perror("write");
+                    else
+                    {
+                        memmove(buf[i - 1] + tmp, buf[i  - 1], buf_size[i - 1] - tmp);
+                        buf_size[i - 1] -= tmp;
+                    }
+                }   
+            printf("event=%d on fd=%d\n", events[i].events, events[i].data.fd);
+        }
+    }
     free(events);
 
     return 0;
