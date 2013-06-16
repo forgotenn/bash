@@ -1,9 +1,15 @@
 #include <sys/epoll.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
 
 const int MAX_NUMBER_FD = 2;
 const int MAX_EVENTS = 64;
+const int MAX_BUFSIZE = 100;
 typedef struct epoll_event epoll_event;
 int main()
 {
@@ -35,11 +41,37 @@ int main()
         free(events);
         return 1;
     }
+    char* buf;
+    int bufsize = 0;
+    buf = malloc(MAX_BUFSIZE);
     int i;
     for (i = 0; i < nr_events; i++)
     {
+        if (events[i].events & EPOLLIN)
+        {
+           if (bufsize < MAX_BUFSIZE)
+           {
+               int tmp = read(events[i].data.fd, buf + bufsize, MAX_BUFSIZE - bufsize);
+               if (tmp < 0)
+                   perror("read");
+               else 
+                   bufsize += tmp;
+            }
+        } else
+        if (events[i].events & EPOLLOUT)
+        {
+            int tmp = write(events[i].data.fd, buf, bufsize);
+            if (tmp < 0)
+                perror("write");
+            else
+            {
+                memmove(buf + tmp, buf, bufsize - tmp);
+                bufsize -= tmp;
+            }
+        }   
         printf("event=%d on fd=%d\n", events[i].events, events[i].data.fd);
     }
+
     free(events);
 
     return 0;
