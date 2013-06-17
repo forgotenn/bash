@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-const int BUFSIZE = 4;
+const int BUFSIZE = 100;
 char* buf;
 char* good;
 char* change;
@@ -33,7 +33,7 @@ int modify(char* s, int len)
         if (equal(s + i))
         {
             s[i] = '@';
-            memmove(s + i + 1, s + change_len, len - i - change_len);
+            memmove(s + i + 1, s + change_len + i, len - i - change_len);
             len -= (change_len - 1);
         }
     }
