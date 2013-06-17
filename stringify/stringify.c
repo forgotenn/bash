@@ -21,8 +21,8 @@ int equal(char* s)
     int i;
     for (i = 0; i < change_len; i++)
         if (s[i] != change[i])
-            return -1;
-    return 0;
+            return 0;
+    return 1;
 }
 
 void modify(char* s, int len)

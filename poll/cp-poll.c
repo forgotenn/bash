@@ -1,4 +1,4 @@
-nclude <poll.h>
+#include <poll.h>
 #include <stropts.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -61,13 +61,15 @@ int main(int argc, char** argv)
                 }
                 if (fds[i].revents & POLLOUT)
                 {
-                        int tmp = write(fds[i].fd, buf[i - 1], buf_size[i - 1]);
-                        if (tmp < 0)
-                            perror("write");
-                        memmove(buf[i - 1] + tmp, buf[i - 1], buf_size[i - 1] - tmp);
-                        buf_size[i - 1] -= tmp;
+                    int tmp = write(fds[i].fd, buf[i - 1], buf_size[i - 1]);
+                    if (tmp < 0)
+                        perror("write");
+                    memmove(buf[i - 1] + tmp, buf[i - 1], buf_size[i - 1] - tmp);
+                    buf_size[i - 1] -= tmp;
                     if (buf_size[i - 1] == 0)
-                            fds[i].events &=~ POLLOUT;
+                        fds[i].events &=~ POLLOUT;
+                    if (buf_size[i - 1] < BUFSIZE)
+                        fds[i - 1].events |= POLLIN;
 
                 }
             }    
