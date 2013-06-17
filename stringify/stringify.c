@@ -25,7 +25,7 @@ int equal(char* s)
     return 1;
 }
 
-void modify(char* s, int len)
+int modify(char* s, int len)
 {
     int i;
     for (i = 0; i < len - change_len; i++)
@@ -34,8 +34,10 @@ void modify(char* s, int len)
         {
             s[i] = '\n';
             memmove(s + i + 1, s + change_len, len - i - change_len);
+            len -= (change_len - 1);
         }
     }
+    return len;
 }
 
 int main(int argc, char** argv)
@@ -69,7 +71,7 @@ int main(int argc, char** argv)
         }
 
         if (good_size >= change_len)
-            modify(good, good_size);
+            good_size = modify(good, good_size);
 
         if (good_size > change_len)
         {
