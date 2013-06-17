@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-const int BUFSIZE = 100;
+const int BUFSIZE = 4;
 char* buf;
 char* good;
 char* change;
@@ -32,7 +32,7 @@ int modify(char* s, int len)
     {
         if (equal(s + i))
         {
-            s[i] = '\n';
+            s[i] = '@';
             memmove(s + i + 1, s + change_len, len - i - change_len);
             len -= (change_len - 1);
         }
@@ -53,7 +53,7 @@ int main(int argc, char** argv)
         int tmp = read(0, buf + buf_size, BUFSIZE - buf_size);
         if (tmp > 0)
             buf_size += tmp;
-
+        printf("buf=%s\n", buf);
         if (buf_size > 0)
         {
             int i = 0;
@@ -69,10 +69,10 @@ int main(int argc, char** argv)
             memmove(buf + i, buf, buf_size - i);
             buf_size -= i;
         }
-
+        printf("good=%s\n", good);
         if (good_size >= change_len)
             good_size = modify(good, good_size);
-
+        printf("good after modify=%s\n", good);
         if (good_size > change_len)
         {
             tmp =  write(1, good, good_size - change_len);
