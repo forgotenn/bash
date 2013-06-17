@@ -66,7 +66,7 @@ int main(int argc, char** argv)
                 }
                 i++; 
             }
-            memmove(buf + i, buf, buf_size - i);
+            memmove(buf, buf + i, buf_size - i);
             buf_size -= i;
         }
         printf("good=%s\n", good);
@@ -78,9 +78,11 @@ int main(int argc, char** argv)
             tmp =  write(1, good, good_size - change_len);
             if (tmp > 0)
             {
-                memmove(good + tmp, good, good_size - tmp);
+                memmove(good, good + tmp, good_size - tmp);
                 good_size -= tmp;
             }
+            printf("good_size=%d\n", good_size);
+            printf("good after write=%s\n", good);
         }
     }
     return 0;
