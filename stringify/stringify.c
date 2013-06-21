@@ -32,7 +32,7 @@ int modify(char* s, int len)
     {
         if (equal(s + i))
         {
-            s[i] = '@';
+            s[i] = '\n';
             memmove(s + i + 1, s + change_len + i, len - i - change_len);
             len -= (change_len - 1);
         }
@@ -42,8 +42,8 @@ int modify(char* s, int len)
 
 int main(int argc, char** argv)
 {
-    change = "a";
-    change_len = 1;
+    change = argv[1];
+    change_len = strlen(change);
     buf = malloc(BUFSIZE);
     good = malloc(BUFSIZE);
     buf_size = 0;
@@ -53,7 +53,7 @@ int main(int argc, char** argv)
         int tmp = read(0, buf + buf_size, BUFSIZE - buf_size);
         if (tmp > 0)
             buf_size += tmp;
-        printf("buf=%s\n", buf);
+//        printf("buf=%s\n", buf);
         if (buf_size > 0)
         {
             int i = 0;
@@ -69,10 +69,10 @@ int main(int argc, char** argv)
             memmove(buf, buf + i, buf_size - i);
             buf_size -= i;
         }
-        printf("good=%s\n", good);
+ //       printf("good=%s\n", good);
         if (good_size >= change_len)
             good_size = modify(good, good_size);
-        printf("good after modify=%s\n", good);
+//        printf("good after modify=%s\n", good);
         if (good_size > change_len)
         {
             tmp =  write(1, good, good_size - change_len);
@@ -81,8 +81,8 @@ int main(int argc, char** argv)
                 memmove(good, good + tmp, good_size - tmp);
                 good_size -= tmp;
             }
-            printf("good_size=%d\n", good_size);
-            printf("good after write=%s\n", good);
+ //           printf("good_size=%d\n", good_size);
+ //           printf("good after write=%s\n", good);
         }
     }
     return 0;
