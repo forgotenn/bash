@@ -78,6 +78,7 @@ struct client
         buf_size += read_bytes;
         if (buf_size == MAX_BUFSIZE)
         {
+            printf("Closing read for %d\n", fd);
             epoll_event cur;
             events &=~ EPOLLIN;
             cur.events = events;
@@ -88,11 +89,12 @@ struct client
         }
         if (buf_size > 0)
         {
+            printf("Opening write for %d\n", next.fd);
             epoll_event cur;
             next.events |= EPOLLOUT;
-            cur.events = events;
+            cur.events = next.events;
             cur.data.fd = -next.id;
-            int ret = epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &cur);
+            int ret = epoll_ctl(epfd, EPOLL_CTL_MOD, next.fd, &cur);
             if (ret < 0)
                 perror("epoll_ctl");
         }
@@ -100,12 +102,13 @@ struct client
 
     void work_write(client& prev)
     {
-        printf("work_write %d\n", fd);
         int write_bytes = write(fd, prev.buf, prev.buf_size);
+        printf("Wrote %d bytes to %d\n", write_bytes, fd);
         memmove(prev.buf, prev.buf + write_bytes, prev.buf_size - write_bytes);
         prev.buf_size -= write_bytes;
         if (prev.buf_size == 0)
         {
+            printf("Closing write for %d\n", fd);
             epoll_event cur;
             events &=~ EPOLLOUT;
             cur.events = events;
@@ -116,11 +119,12 @@ struct client
         }
         if (prev.buf_size < MAX_BUFSIZE)
         {
+            printf("Opening read for %d\n", prev.fd);
             epoll_event cur;
-            prev.events &=~ EPOLLIN;
-            cur.events = events;
+            prev.events |= EPOLLIN;
+            cur.events = prev.events;
             cur.data.fd = -prev.id;
-            int ret = epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &cur);
+            int ret = epoll_ctl(epfd, EPOLL_CTL_MOD, prev.fd, &cur);
             if (ret < 0)
                 perror("epoll_ctl");
         }
@@ -217,6 +221,7 @@ void prepare()
             break;
         if ((clients[cur_client].buf_size > 0))
         {
+            printf("%d can write\n", clients[next_client].fd);
             clients[next_client].events |= EPOLLOUT;
             cur.events = clients[next_client].events;
             cur.data.fd = -next_client;
