@@ -45,7 +45,8 @@ struct client
     char buf[MAX_BUFSIZE];
     int buf_size;
     int flag; // 0 - name, 1 - prev, 2 - next 
-    client(int id_, int fd_): id(id_), fd(fd_), buf_size(0), flag()
+    int events;
+    client(int id_, int fd_): id(id_), fd(fd_), buf_size(0), flag(), events(0)
     {};
 
     void work_read_prepipe()
@@ -70,15 +71,68 @@ struct client
             prepare();
     }
 
-    void work_read_pipe()
+    void work_read_pipe(client& next)
     {
+        printf("Hello. I'm %s\n", name.c_str());
+        int read_bytes = read(fd, buf + buf_size, MAX_BUFSIZE - buf_size);
+        buf_size += read_bytes;
+        if (buf_size == MAX_BUFSIZE)
+        {
+            epoll_event cur;
+            events &=~ EPOLLIN;
+            cur.events = events;
+            cur.data.fd = -id;
+            int ret = epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &cur);
+            if (ret < 0)
+                perror("epoll_ctl");
+        }
+        if (buf_size > 0)
+        {
+            epoll_event cur;
+            next.events |= EPOLLOUT;
+            cur.events = events;
+            cur.data.fd = -next.id;
+            int ret = epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &cur);
+            if (ret < 0)
+                perror("epoll_ctl");
+        }
     }
-    void work_read()
+
+    void work_write(client& prev)
     {
+        printf("work_write %d\n", fd);
+        int write_bytes = write(fd, prev.buf, prev.buf_size);
+        memmove(prev.buf, prev.buf + write_bytes, prev.buf_size - write_bytes);
+        prev.buf_size -= write_bytes;
+        if (prev.buf_size == 0)
+        {
+            epoll_event cur;
+            events &=~ EPOLLOUT;
+            cur.events = events;
+            cur.data.fd = -id;
+            int ret = epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &cur);
+            if (ret < 0)
+                perror("epoll_ctl");
+        }
+        if (prev.buf_size < MAX_BUFSIZE)
+        {
+            epoll_event cur;
+            prev.events &=~ EPOLLIN;
+            cur.events = events;
+            cur.data.fd = -prev.id;
+            int ret = epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &cur);
+            if (ret < 0)
+                perror("epoll_ctl");
+        }
+    }
+
+    void work_read(client& next)
+    {
+        printf("work read\n");
         if (!is_chain)
             work_read_prepipe();
         else 
-            work_read_pipe();
+            work_read_pipe(next);
     }
 
     void get_name()
@@ -151,7 +205,9 @@ void prepare()
         int next_client = client_ids[clients[cur_client].next];
         if (clients[cur_client].buf_size < MAX_BUFSIZE)
         {
-            cur.events = EPOLLIN;
+            printf("%d can read\n", clients[cur_client].fd);
+            clients[cur_client].events |= EPOLLIN;
+            cur.events = clients[cur_client].events;
             cur.data.fd = -cur_client;
             ret = epoll_ctl(epfd, EPOLL_CTL_MOD, clients[cur_client].fd, &cur);
             if (ret < 0)
@@ -161,12 +217,14 @@ void prepare()
             break;
         if ((clients[cur_client].buf_size > 0))
         {
-            cur.events = EPOLLOUT;
+            clients[next_client].events |= EPOLLOUT;
+            cur.events = clients[next_client].events;
             cur.data.fd = -next_client;
             ret = epoll_ctl(epfd, EPOLL_CTL_MOD, clients[next_client].fd, &cur); 
             if (ret < 0)
                 perror("epoll_ctl");
         }
+        cur_client = next_client;
     }
 }
 
@@ -218,7 +276,14 @@ int main(int argc, char**argv)
                 if (events[i].events & EPOLLIN)
                 {
                     int id = -events[i].data.fd;
-                    clients[id].work_read();
+                    int next_id = client_ids[clients[id].next];
+                    clients[id].work_read(clients[next_id]);
+                } else
+                if (events[i].events & EPOLLOUT)
+                {
+                    int id = -events[i].data.fd;
+                    int prev_id = client_ids[clients[id].prev];
+                    clients[id].work_write(clients[prev_id]);
                 }
         }
     }
